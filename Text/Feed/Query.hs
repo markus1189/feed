@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 --------------------------------------------------------------------
 -- |
 -- Module    : Text.Feed.Query
@@ -62,8 +63,13 @@ import Data.List
 import Data.Maybe
 
 -- for getItemPublishDate rfc822 date parsing.
-import System.Locale ( rfc822DateFormat, iso8601DateFormat, defaultTimeLocale )
-import Data.Time.Format ( ParseTime, parseTime )
+#if MIN_VERSION_time(1,5,0)
+import Data.Time.Format (defaultTimeLocale)
+#else
+import System.Locale (defaultTimeLocale)
+#endif
+import System.Locale ( rfc822DateFormat, iso8601DateFormat)
+import Data.Time.Format ( ParseTime, parseTimeM )
 
 feedItems :: Feed.Feed -> [Feed.Item]
 feedItems fe =
@@ -272,7 +278,7 @@ getItemPublishDate it = do
 
      formats = [ rfc3339DateFormat1, rfc3339DateFormat2, rfc822DateFormat ]
 
-     date = foldl1 mplus (map (\ fmt -> parseTime defaultTimeLocale fmt ds) formats)
+     date = foldl1 mplus (map (\ fmt -> parseTimeM True defaultTimeLocale fmt ds) formats)
    return date
 
 getItemPublishDateString :: ItemGetter DateString
@@ -319,7 +325,7 @@ getItemEnclosure it =
        case filter isEnc $ Atom.entryLinks e of
          (l:_) -> Just (Atom.linkHref l,
                         Atom.linkType l,
-			readLength (Atom.linkLength l))
+                        readLength (Atom.linkLength l))
          _ -> Nothing
     Feed.RSSItem i  ->
        fmap (\ e -> (RSS.rssEnclosureURL e, Just (RSS.rssEnclosureType e), RSS.rssEnclosureLength e))
